@@ -1,0 +1,14 @@
+[
+    {
+        "question": "what is the main topic of this video?",
+        "answer": "The main topic of the video is best practices for effective and efficient data automation pipelines. It discusses defining clear objectives, ensuring data quality, planning for scalability, monitoring workflows, designing for predictability, and avoiding unnecessary complexity in automation processes."
+    },
+    {
+        "question": "Is this from IBM ?",
+        "answer": "I don't have enough information to confirm if the video is from IBM or not."
+    },
+    {
+        "question": "Any paticular tool did they told, to look out for ?",
+        "answer": "I'm sorry, but based on the context provided, there is no specific mention of a particular tool in the video."
+    }
+]

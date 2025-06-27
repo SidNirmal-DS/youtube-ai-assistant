@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" class="light"> <!-- Default to light mode, controlled by JS for dark mode class strategy -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Assistant</title>
+    <!-- Favicon for branding. Assumes favicon.ico is in the /static/ folder. -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <!-- Google Fonts: Inter for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+    <!-- Tailwind CSS CDN for utility-first styling. Tailwind's dark mode is enabled by adding 'dark' class to html element. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Apply Google Font to the body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light theme background */
+            display: flex;
+            flex-direction: column; /* Column layout for sticky footer */
+            min-height: 100vh; /* Full viewport height */
+            /* Smooth background transition for theme change */
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        /* Dark mode body background, applied when 'dark' class is on html */
+        html.dark body {
+            background-color: #1a202c; /* A very dark grey for overall background */
+        }
+
+        /* Custom scrollbar for better aesthetics and usability */
+        .transcript-scrollable::-webkit-scrollbar {
+            width: 8px; /* Width of the scrollbar */
+            border-radius: 4px; /* Rounded corners for the scrollbar */
+        }
+        .transcript-scrollable::-webkit-scrollbar-track {
+            background: #e0e0e0; /* Light grey track */
+            border-radius: 4px;
+        }
+        html.dark .transcript-scrollable::-webkit-scrollbar-track {
+            background: #4a5568; /* Darker track for dark mode */
+        }
+        .transcript-scrollable::-webkit-scrollbar-thumb {
+            background: #a0a0a0; /* Darker grey thumb */
+            border-radius: 4px;
+        }
+        html.dark .transcript-scrollable::-webkit-scrollbar-thumb {
+            background: #718096; /* Lighter thumb for dark mode */
+        }
+        .transcript-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #707070; /* Even darker grey on hover */
+        }
+        html.dark .transcript-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #90a4ae; /* Even lighter thumb for dark mode hover */
+        }
+
+        /* Styling for the collapsible details element */
+        details summary {
+            cursor: pointer; /* Indicate it's clickable */
+            list-style: none; /* Hide default browser arrow/marker */
+            display: flex; /* Use flexbox for alignment */
+            align-items: center;
+            justify-content: space-between; /* Space out title and custom arrow */
+            /* Smooth transition for summary element's background/text when opened/closed */
+            transition: all 0.3s ease-in-out;
+        }
+        details summary::-webkit-details-marker {
+            display: none; /* Hide default arrow for WebKit browsers (Chrome, Safari) */
+        }
+        details summary::after {
+            content: '▼'; /* Custom down arrow for closed state */
+            transition: transform 0.2s ease; /* Smooth transition for arrow rotation */
+            font-size: 0.8em; /* Slightly smaller arrow */
+            color: #4a5568; /* Grey color for the arrow */
+        }
+        html.dark details summary::after {
+            color: #cbd5e0; /* Lighter arrow for dark mode */
+        }
+        details[open] summary::after {
+            content: '▲'; /* Custom up arrow for open state */
+            transform: rotate(0deg); /* Reset rotation, as the default ▼ is already oriented */
+        }
+
+        /* Page Loading Fade-in Animation for main content container */
+        /* This class will be added to the main content div to trigger a subtle fade-in on page load. */
+        .page-fade-in {
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8 lg:p-12">
+    <!-- Sticky Header with dark mode support and transitions -->
+    <header class="w-full bg-white shadow-sm py-4 px-6 md:px-10 fixed top-0 left-0 z-10 transition-all duration-300 ease-in-out
+                   dark:bg-gray-900 dark:shadow-lg">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">AI Video Assistant</h1>
+            <nav class="flex items-center space-x-4">
+                <a href="https://github.com/your-github" target="_blank" class="text-gray-600 hover:text-blue-600 transition-all duration-200 ease-in-out dark:text-gray-400 dark:hover:text-blue-400">
+                    <i class="fab fa-github mr-1"></i> GitHub
+                </a>
+                <!-- Theme Toggle Button with icons and transitions -->
+                <button id="themeToggle" class="p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300
+                                               dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
+                                               focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ease-in-out">
+                    <i class="fas fa-moon" id="themeIcon"></i> <!-- Initial icon for light mode, will change to sun in dark mode -->
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main container for the AI Assistant UI. Applies fade-in on initial load. -->
+    <div id="mainContent" class="max-w-4xl w-full mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 md:p-10 space-y-8 mt-24 mb-12 flex-grow page-fade-in
+                               dark:bg-gray-900 dark:text-gray-100 dark:shadow-xl transition-all duration-300 ease-in-out"> <!-- Changed to gray-900 for a darker card -->
+
+        <!-- Page Header (main content) -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Unleash Video Insights with AI</h1>
+            <p class="text-gray-600 mt-2 text-lg dark:text-gray-300">Transcribe, Summarize, and Get Answers from YouTube Videos Instantly.</p>
+        </div>
+
+        <!-- 1. YouTube Link Input Section -->
+        <section class="bg-blue-50 p-6 rounded-xl shadow-md border border-blue-100 transition-all duration-300 ease-in-out
+                        dark:bg-gray-800 dark:border-gray-700 dark:shadow-lg"> <!-- Consistent dark background for sections -->
+            <h2 class="text-2xl font-semibold text-blue-800 mb-4 flex items-center dark:text-blue-300"><i class="fab fa-youtube mr-3"></i> YouTube Video Analysis</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="text" id="youtubeUrl" placeholder="Paste YouTube video URL here (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
+                       class="flex-1 p-3 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out text-gray-700
+                              dark:bg-gray-950 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-blue-400"> <!-- Input field background deeper dark -->
+                <button id="extractTranscriptBtn"
+                        class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-md flex items-center justify-center
+                               hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75
+                               transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95">
+                    <i class="fas fa-file-alt mr-2"></i> Extract Transcript
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. Transcript Display Section -->
+        <section id="transcriptSection" class="hidden space-y-4 bg-gray-50 p-6 rounded-xl shadow-md border border-gray-100 transition-all duration-300 ease-in-out
+                        dark:bg-gray-800 dark:border-gray-700 dark:shadow-lg"> <!-- Consistent dark background for sections -->
+            <h2 class="text-2xl font-semibold text-gray-800 flex items-center dark:text-gray-200"><i class="fas fa-clipboard-list mr-3"></i> Video Transcript</h2>
+            <details open class="mt-4">
+                <summary class="text-xl font-medium text-gray-700 p-3 bg-white rounded-lg shadow-sm border border-gray-200 flex items-center transition-all duration-300 ease-in-out
+                                dark:bg-gray-950 dark:border-gray-700 dark:text-gray-200"> <!-- Summary header deeper dark -->
+                    Full Transcript
+                </summary>
+                <div id="transcriptContent" class="mt-4 p-4 bg-white border border-gray-200 rounded-lg max-h-80 overflow-y-auto transcript-scrollable text-gray-700 leading-relaxed text-sm shadow-inner transition-all duration-300 ease-in-out
+                                dark:bg-gray-950 dark:border-gray-700 dark:text-gray-300 dark:shadow-none"> <!-- Content area deeper dark -->
+                    <!-- Transcript Content will be populated dynamically from the backend or show shimmer -->
+                    <p class="text-gray-500 italic dark:text-gray-400">Enter a YouTube URL and click 'Extract Transcript' to see the content here.</p>
+                </div>
+            </details>
+            <button id="summarizeTranscriptBtn" class="px-6 py-3 bg-green-600 text-white font-medium rounded-lg shadow-md flex items-center justify-center
+                               hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75
+                               transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 w-full sm:w-auto mt-4">
+                <i class="fas fa-highlighter mr-2"></i> Summarize Transcript
+            </button>
+        </section>
+
+        <!-- 3. Summary Section -->
+        <section id="summarySection" class="hidden space-y-4 bg-purple-50 p-6 rounded-xl shadow-md border border-purple-100 transition-all duration-300 ease-in-out
+                        dark:bg-gray-800 dark:border-gray-700 dark:shadow-lg"> <!-- Consistent dark background for sections -->
+            <h2 class="text-2xl font-semibold text-purple-800 flex items-center dark:text-purple-300"><i class="fas fa-file-contract mr-3"></i> Summary</h2>
+            <div id="summaryContent" class="p-4 bg-white border border-purple-200 rounded-lg shadow-inner text-gray-800 leading-relaxed text-sm transition-all duration-300 ease-in-out
+                                dark:bg-gray-950 dark:border-gray-700 dark:text-gray-300 dark:shadow-none"> <!-- Content area deeper dark -->
+                <!-- Summary Content will be populated dynamically from the backend or show shimmer -->
+                <p class="text-gray-500 italic dark:text-gray-400">Click 'Summarize Transcript' to generate a summary.</p>
+            </div>
+        </section>
+
+        <!-- 4. Q&A Section (Chat-style) -->
+        <section id="qaSection" class="hidden space-y-4 bg-teal-50 p-6 rounded-xl shadow-md border border-teal-100 transition-all duration-300 ease-in-out
+                        dark:bg-gray-800 dark:border-gray-700 dark:shadow-lg"> <!-- Consistent dark background for sections -->
+            <h2 class="text-2xl font-semibold text-teal-800 flex items-center dark:text-teal-300"><i class="fas fa-comments mr-3"></i> Q&A about this video</h2>
+            <div id="qaHistory" class="bg-white p-4 rounded-lg shadow-inner max-h-72 overflow-y-auto transcript-scrollable space-y-4 border border-teal-200 transition-all duration-300 ease-in-out
+                                dark:bg-gray-950 dark:border-gray-700 dark:text-gray-300 dark:shadow-none"> <!-- Content area deeper dark -->
+                <!-- Q&A History will be populated dynamically or show shimmer -->
+                <p class="text-gray-500 italic dark:text-gray-400">Ask a question about the video after the summary has been generated.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 mt-4">
+                <input type="text" id="questionInput" placeholder="Ask a question about this video (e.g., What is the video about?)"
+                       class="flex-1 p-3 border border-teal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition duration-200 ease-in-out text-gray-700
+                              dark:bg-gray-950 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-teal-400"> <!-- Input field background deeper dark -->
+                <button id="submitQuestionBtn"
+                        class="px-6 py-3 bg-teal-600 text-white font-medium rounded-lg shadow-md flex items-center justify-center
+                               hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75
+                               transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95">
+                    <i class="fas fa-paper-plane mr-2"></i> Submit
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Simple Fixed Footer with dark mode support and transitions -->
+    <footer class="w-full bg-gray-800 text-white py-4 text-center text-sm fixed bottom-0 left-0 z-10 transition-all duration-300 ease-in-out
+                   dark:bg-gray-950">
+        <div class="max-w-4xl mx-auto">
+            AI Video Assistant &copy; 2023 | Developed with <a href="https://github.com/your-github" target="_blank" class="text-blue-400 hover:underline">GitHub</a>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme toggle functionality
+            const htmlElement = document.documentElement;
+            const themeToggleBtn = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const mainContent = document.getElementById('mainContent');
+
+            // --- Dark Mode: Auto-detect system preference and apply initial theme ---
+            // This script snippet auto-detects system theme and applies the 'dark' class on <html> or <body>.
+            // The 'dark' class on <html> triggers Tailwind's dark mode variants.
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    htmlElement.classList.add('dark');
+                    themeIcon.classList.remove('fa-moon');
+                    themeIcon.classList.add('fa-sun');
+                } else {
+                    htmlElement.classList.remove('dark');
+                    themeIcon.classList.remove('fa-sun');
+                    themeIcon.classList.add('fa-moon');
+                }
+            };
+
+            // Check for saved theme in localStorage first
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else {
+                // If no saved theme, check system preference
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                applyTheme(prefersDark ? 'dark' : 'light');
+            }
+
+            // Listen for changes in system theme preference
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                // Only update if no theme is explicitly saved by the user (or if you want system to always override)
+                // For this request, we let the toggle and localStorage take precedence.
+                // If user hasn't set a preference, it will follow system. If they have, it sticks.
+                if (!localStorage.getItem('theme')) {
+                    applyTheme(e.matches ? 'dark' : 'light');
+                }
+            });
+
+            // Toggle theme on button click and save preference
+            themeToggleBtn.addEventListener('click', () => {
+                const currentTheme = htmlElement.classList.contains('dark') ? 'dark' : 'light';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+            // --- End Dark Mode ---
+
+            // --- Page Loading Shimmer Effect (for initial page load) ---
+            // Remove initial page-fade-in animation class after DOM content is loaded
+            // This ensures the animation only plays on initial load, not subsequent content changes
+            setTimeout(() => { // Small delay to ensure CSS is applied
+                mainContent.classList.remove('page-fade-in');
+            }, 100); // Adjust delay as needed
+            // --- End Page Loading Shimmer Effect ---
+
+
+            // Get references to all necessary DOM elements
+            const extractTranscriptBtn = document.getElementById('extractTranscriptBtn');
+            const summarizeTranscriptBtn = document.getElementById('summarizeTranscriptBtn');
+            const submitQuestionBtn = document.getElementById('submitQuestionBtn');
+            const transcriptSection = document.getElementById('transcriptSection');
+            const summarySection = document.getElementById('summarySection');
+            const qaSection = document.getElementById('qaSection');
+            const transcriptContent = document.getElementById('transcriptContent');
+            const summaryContent = document.getElementById('summaryContent');
+            const qaHistory = document.getElementById('qaHistory');
+            const youtubeUrlInput = document.getElementById('youtubeUrl');
+            const questionInput = document.getElementById('questionInput');
+
+            /**
+             * Generates a skeleton loading state for content areas using Tailwind's animate-pulse.
+             * @param {string} type - 'transcript', 'summary', or 'qa-thinking'
+             */
+            const generateSkeletonLoader = (type) => {
+                let skeletonHtml = '';
+                if (type === 'transcript') {
+                    skeletonHtml = `
+                        <div class="animate-pulse space-y-2 p-2">
+                            <div class="h-4 bg-gray-200 rounded w-full dark:bg-gray-600"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6 dark:bg-gray-600"></div>
+                            <div class="h-4 bg-gray-200 rounded w-full dark:bg-gray-600"></div>
+                            <div class="h-4 bg-gray-200 rounded w-4/5 dark:bg-gray-600"></div>
+                            <div class="h-4 bg-gray-200 rounded w-full dark:bg-gray-600"></div>
+                            <div class="h-4 bg-gray-200 rounded w-2/3 dark:bg-gray-600"></div>
+                        </div>
+                    `;
+                    transcriptContent.innerHTML = skeletonHtml;
+                } else if (type === 'summary') {
+                    skeletonHtml = `
+                        <div class="animate-pulse space-y-2 p-2">
+                            <div class="h-4 bg-blue-200 rounded w-full dark:bg-blue-800"></div>
+                            <div class="h-4 bg-blue-200 rounded w-11/12 dark:bg-blue-800"></div>
+                            <div class="h-4 bg-blue-200 rounded w-4/5 dark:bg-blue-800"></div>
+                        </div>
+                    `;
+                    summaryContent.innerHTML = skeletonHtml;
+                } else if (type === 'qa-thinking') {
+                     // Skeleton for AI's response bubble
+                    skeletonHtml = `
+                        <div class="flex justify-start ai-thinking-bubble">
+                            <div class="bg-gray-200 text-gray-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-gray-700 dark:text-gray-200 animate-pulse">
+                                <div class="h-4 bg-gray-300 rounded w-3/4 dark:bg-gray-600"></div>
+                            </div>
+                        </div>
+                    `;
+                    // Append this fragment to existing chat history
+                    qaHistory.appendChild(document.createRange().createContextualFragment(skeletonHtml));
+                    qaHistory.scrollTop = qaHistory.scrollHeight; // Scroll to the bottom
+                }
+            };
+
+            /**
+             * Fetches the transcript from a YouTube URL via the Flask backend.
+             * Displays the transcript section and reveals the summarize button upon success.
+             */
+            const fetchTranscript = async () => {
+                const url = youtubeUrlInput.value.trim();
+                if (!url) {
+                    youtubeUrlInput.classList.add('border-red-500', 'dark:border-red-400');
+                    transcriptContent.innerHTML = `<p class="text-red-500 italic dark:text-red-400">Please enter a valid YouTube URL.</p>`;
+                    return;
+                } else {
+                     youtubeUrlInput.classList.remove('border-red-500', 'dark:border-red-400'); // Remove error border if corrected
+                }
+
+                // Set loading state for button and show skeleton loader for content
+                extractTranscriptBtn.textContent = 'Extracting...';
+                extractTranscriptBtn.disabled = true;
+                extractTranscriptBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                generateSkeletonLoader('transcript'); // Show shimmer
+                // Reset other sections' content and hide them
+                summaryContent.innerHTML = '<p class="text-gray-500 italic dark:text-gray-400">Click \'Summarize Transcript\' to generate a summary.</p>';
+                qaHistory.innerHTML = '<p class="text-gray-500 italic dark:text-gray-400">Ask a question about the video after the summary has been generated.</p>';
+                summarySection.classList.add('hidden');
+                qaSection.classList.add('hidden');
+
+
+                try {
+                    const res = await fetch('/transcript', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    transcriptContent.innerText = data.transcript; // Display the fetched transcript
+                    transcriptSection.classList.remove('hidden'); // Show transcript section
+                    summarizeTranscriptBtn.style.display = 'flex'; // Ensure summarize button is visible (flex for icon)
+
+                } catch (error) {
+                    console.error('Error fetching transcript:', error);
+                    transcriptContent.innerHTML = `<p class="text-red-500 dark:text-red-400">Error: Could not fetch transcript. ${error.message}</p>`;
+                } finally {
+                    // Restore button state
+                    extractTranscriptBtn.textContent = 'Extract Transcript';
+                    extractTranscriptBtn.disabled = false;
+                    extractTranscriptBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    // No spinner loader to toggle off here, as we're using shimmer
+                }
+            };
+
+            /**
+             * Generates a summary of the transcript via the Flask backend.
+             * Displays the summary section and Q&A section upon success.
+             */
+            const generateSummary = async () => {
+                const transcript = transcriptContent.innerText;
+                // Check if transcript is actual content, not a placeholder/error message
+                if (!transcript || transcript.includes('Enter a YouTube URL') || transcript.includes('Fetching transcript') || transcript.includes('Error:')) {
+                    summaryContent.innerHTML = `<p class="text-red-500 italic dark:text-red-400">Cannot summarize: transcript is not available or invalid.</p>`;
+                    return;
+                }
+
+                // Set loading state for button and show skeleton loader for content
+                summarizeTranscriptBtn.textContent = 'Summarizing...';
+                summarizeTranscriptBtn.disabled = true;
+                summarizeTranscriptBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                generateSkeletonLoader('summary'); // Show shimmer
+                // Reset Q&A section content
+                qaHistory.innerHTML = '<p class="text-gray-500 italic dark:text-gray-400">Ask a question about the video after the summary has been generated.</p>';
+
+
+                try {
+                    const res = await fetch('/summarize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ transcript })
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    summaryContent.innerText = data.summary; // Display the fetched summary
+                    summarySection.classList.remove('hidden'); // Show summary section
+                    qaSection.classList.remove('hidden');     // Show Q&A section
+
+                } catch (error) {
+                    console.error('Error generating summary:', error);
+                    summaryContent.innerHTML = `<p class="text-red-500 dark:text-red-400">Error: Could not generate summary. ${error.message}</p>`;
+                } finally {
+                    // Restore button state
+                    summarizeTranscriptBtn.textContent = 'Summarize Transcript';
+                    summarizeTranscriptBtn.disabled = false;
+                    summarizeTranscriptBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    // No spinner loader to toggle off here, as we're using shimmer
+                }
+            };
+
+            /**
+             * Submits a question about the video and receives an AI-generated answer from the backend.
+             * Appends both the user's question and the AI's answer to the chat history.
+             */
+            const submitQuestion = async () => {
+                const question = questionInput.value.trim();
+                const transcript = transcriptContent.innerText; // Get the currently displayed transcript
+
+                if (!question) {
+                    questionInput.classList.add('border-red-500', 'dark:border-red-400');
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('flex', 'justify-start');
+                    errorDiv.innerHTML = `<div class="bg-red-100 text-red-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-red-900 dark:text-red-300">Error: Please enter a question.</div>`;
+                    qaHistory.appendChild(errorDiv);
+                    qaHistory.scrollTop = qaHistory.scrollHeight;
+                    return;
+                } else {
+                     questionInput.classList.remove('border-red-500', 'dark:border-red-400'); // Remove error border if corrected
+                }
+                // Check if transcript is actual content, not a placeholder/error message
+                if (!transcript || transcript.includes('Enter a YouTube URL') || transcript.includes('Fetching transcript') || transcript.includes('Error:')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('flex', 'justify-start');
+                    errorDiv.innerHTML = `
+                        <div class="bg-red-100 text-red-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-red-900 dark:text-red-300">
+                            Error: Transcript not available for Q&A. Please extract it first.
+                        </div>
+                    `;
+                    qaHistory.appendChild(errorDiv);
+                    qaHistory.scrollTop = qaHistory.scrollHeight;
+                    return;
+                }
+
+                // Add user's question to the Q&A history immediately
+                const userQuestionDiv = document.createElement('div');
+                userQuestionDiv.classList.add('flex', 'justify-end');
+                userQuestionDiv.innerHTML = `
+                    <div class="bg-blue-100 text-blue-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-blue-900 dark:text-blue-200">
+                        Q: ${question}
+                    </div>
+                `;
+                qaHistory.appendChild(userQuestionDiv);
+                qaHistory.scrollTop = qaHistory.scrollHeight; // Scroll to the bottom to show new message
+
+                // Clear the input field
+                questionInput.value = '';
+
+                // Set loading state for the submit button and show thinking bubble shimmer
+                submitQuestionBtn.textContent = 'Submitting...';
+                submitQuestionBtn.disabled = true;
+                submitQuestionBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                generateSkeletonLoader('qa-thinking'); // Show thinking bubble shimmer
+
+
+                try {
+                    const res = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question, transcript })
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+                    }
+
+                    const data = await res.json();
+
+                    // Remove the thinking bubble before adding the actual answer
+                    const thinkingBubble = qaHistory.querySelector('.ai-thinking-bubble');
+                    if (thinkingBubble) {
+                        thinkingBubble.remove();
+                    }
+
+                    // Add AI's answer to the Q&A history
+                    const aiAnswerDiv = document.createElement('div');
+                    aiAnswerDiv.classList.add('flex', 'justify-start');
+                    aiAnswerDiv.innerHTML = `
+                        <div class="bg-gray-200 text-gray-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-gray-700 dark:text-gray-200">
+                            A: ${data.answer}
+                        </div>
+                    `;
+                    qaHistory.appendChild(aiAnswerDiv);
+                    qaHistory.scrollTop = qaHistory.scrollHeight; // Scroll to the bottom again
+
+                } catch (error) {
+                    console.error('Error submitting question:', error);
+                    // Remove any existing thinking bubble if an error occurs
+                    const thinkingBubble = qaHistory.querySelector('.ai-thinking-bubble');
+                    if (thinkingBubble) {
+                        thinkingBubble.remove();
+                    }
+                    // Display an error message to the user in the chat history
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('flex', 'justify-start');
+                    errorDiv.innerHTML = `
+                        <div class="bg-red-100 text-red-800 p-3 rounded-lg max-w-[80%] shadow-sm dark:bg-red-900 dark:text-red-300">
+                            Error: Could not get an answer. Please try again. (${error.message})
+                        </div>
+                    `;
+                    qaHistory.appendChild(errorDiv);
+                    qaHistory.scrollTop = qaHistory.scrollHeight;
+                } finally {
+                    // Restore submit button state regardless of success or failure
+                    submitQuestionBtn.textContent = 'Submit';
+                    submitQuestionBtn.disabled = false;
+                    submitQuestionBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    // No spinner loader to toggle off here, as we're using shimmer
+                }
+            };
+
+            // --- Event Listeners ---
+            extractTranscriptBtn.addEventListener('click', fetchTranscript);
+            summarizeTranscriptBtn.addEventListener('click', generateSummary);
+            submitQuestionBtn.addEventListener('click', submitQuestion);
+
+            // Allow pressing Enter in the question input field to submit the question
+            questionInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    submitQuestion();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,41 @@
+1. User inputs YouTube URL ➜ 
+2. TranscriptAgent fetches transcript ➜ 
+3. SummaryAgent summarizes it ➜ 
+4. QueryAgent allows interactive Q&A ➜ 
+5. TranslateAgent translates responses (optional) ➜ 
+6. MemoryAgent retains context ➜ 
+7. User gets conversational output
+
+
+PROJECT STRUCTURE PROPOSAL
+contextual_ai_agent/
+│
+├── main.py                  # orchestrator
+├── agents/
+│   ├── transcript_agent.py
+│   ├── summary_agent.py
+│   ├── query_agent.py
+│   └── translate_agent.py
+├── prompts/
+│   └── prompt_templates.py  # holds prompt templates for summarization, query, etc.
+├── utils/
+│   └── helpers.py           # utility functions: text cleanups, lang detection
+├── .env                     # stores API keys
+└── requirements.txt
+
+
+contextual_ai_agent/
+├── static/
+│   ├── style.css         ← from Gemini
+├── templates/
+│   ├── index.html        ← from Gemini
+├── app.py                ← new main Flask script (we’ll create this)
+├── your existing agent files...
+
+
+
+Line - Purpose
+.env  ----> Protects your API keys stored in .env from going public
+__pycache__/ -----> Prevents compiled cache files from being pushed
+*.pyc -----> Ignores compiled Python bytecode
+*.pyo -----> Ignores optimized Python files
